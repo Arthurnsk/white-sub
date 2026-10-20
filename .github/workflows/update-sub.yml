@@ -1,0 +1,39 @@
+name: Update subscription
+
+on:
+  schedule:
+    - cron: "0 * * * *"
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+concurrency:
+  group: update-subscription
+  cancel-in-progress: false
+
+jobs:
+  update:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Merge sources into sub.txt
+        run: python3 scripts/update_sub.py
+
+      - name: Commit subscription if it changed
+        run: |
+          if [ ! -s sub.txt ]; then
+            echo "sub.txt is missing or empty; not committing"
+            exit 0
+          fi
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -- sub.txt sub_b64.txt
+          if git diff --cached --quiet; then
+            echo "No content changes"
+            exit 0
+          fi
+          git commit -m "Update merged V2Ray subscription"
+          git push
